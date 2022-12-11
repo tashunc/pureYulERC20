@@ -1,10 +1,30 @@
 const path = require('path');
 const fs = require('fs');
+const YAML = require('yaml');
 
-// Defines a Yul ignore file to optimize the process and ignore the unnecessary folders
-const contents = fs.readFileSync('.yulignore', 'utf-8');
-const ignoringFiles = contents.split(/\r?\n/);
 
+// =================================================================
+ export let COMPILER_CONFIG: any = null;
+ export let YUL_IGNORE_FILES: any = null;
+
+
+// ==================================================================
+
+ export function readYamlConfig() {
+    const loadedConfig = fs.readFileSync("./yul-config.yaml", 'utf8');
+    COMPILER_CONFIG = YAML.parse(loadedConfig)
+    console.log(COMPILER_CONFIG)
+}
+
+/**
+ * Defines a Yul ignore file to optimize the process and ignore the unnecessary folders
+ * */
+
+ export function loadYulIgnore(){
+    const contents = fs.readFileSync('.yulignore', 'utf-8');
+    YUL_IGNORE_FILES = contents.split(/\r?\n/);
+
+}
 
 /**
  * input :  contracts, pure_yul_constructor.yul
@@ -13,13 +33,13 @@ const ignoringFiles = contents.split(/\r?\n/);
  * Given a location to start, search all the files matching the filer and return the name and the relative path
  *
  **/
-function getAllYulFiles(startPath, filter) {
+ export function getAllYulFiles(startPath: string, filter: string) : any {
     const found = [];
     const files = fs.readdirSync(startPath);
     for (let i = 0; i < files.length; i++) {
         const filename = path.join(startPath, files[i]);
         const stat = fs.lstatSync(filename);
-        if (stat.isDirectory() && (!ignoringFiles.includes(filename))) {
+        if (stat.isDirectory() && (!YUL_IGNORE_FILES.includes(filename))) {
             found.push(...getAllYulFiles(filename, filter));
         } else if (filename.endsWith(filter)) {
             if (files[i].split(".")[0]) {
@@ -38,9 +58,10 @@ function getAllYulFiles(startPath, filter) {
  * arg2 - name of the file (convention used here)
  *
  * */
-function compileToBinaryCode(name, path) {
-    require('child_process').exec('cmd /c C:\\addToPath\\yul_pure_compile.bat .\\' + path + ' ' + name,
-        (error) => {
+ export function compileToBinaryCode(name: string, path: string , savepath = COMPILER_CONFIG.outputPath) {
+    const fileName = name;
+    require('child_process').exec('cmd /c C:\\addToPath\\yul_pure_compile.bat .\\' + path +  ' ' + name +  savepath,
+        (error: any) => {
             if (error !== null) {
                 console.log(`exec error: ${error}`);
             }
@@ -50,7 +71,7 @@ function compileToBinaryCode(name, path) {
 /**
  * return the file metadata which will be helpful for yul compilation
  * */
-function findAFile(name, extension) {
+ export function findAFile(name: string, extension: string) {
     return getAllYulFiles("contracts", name + "." + extension)
 
 }
@@ -58,7 +79,7 @@ function findAFile(name, extension) {
 /**
  * Given the root compile all the .yul files
  * */
-function compileAll() {
+ export function compileAll() {
     const file2 = getAllYulFiles(".", ".yul");
     // console.log(file2)
 
@@ -72,7 +93,7 @@ function compileAll() {
  * given a file name and an extension a file is compiled
  *
  * */
-function compileSelected(filename, extension) {
+ export function compileSelected(filename: string, extension: string) {
     const file2 = findAFile(filename, extension)
     console.log(file2)
     if (file2.length > 0) {
@@ -80,16 +101,18 @@ function compileSelected(filename, extension) {
     }
 }
 
-function getFilteredByteCode(filePath) {
-    const ignoringFiles = fs.readFileSync(filePath, 'utf-8')
-    console.log(ignoringFiles)
+ export function getFilteredByteCode(filePath: any) {
+    const readByteCode = fs.readFileSync(filePath, 'utf-8')
+    console.log(readByteCode)
 }
 
 /**
  * TEST COMPILATION
  * */
-compileSelected("yulERC20", "yul");
-getFilteredByteCode("contracts\\yulERC20.yul");
+// readYamlConfig();
+// loadYulIgnore();
+// compileSelected("yulERC20", "yul");
+// getFilteredByteCode("contracts\\yulERC20.yul");
 // compileAll()
 
 // @tovarishfin/hardhat-yul
