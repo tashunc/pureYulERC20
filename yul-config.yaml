@@ -1,0 +1,5 @@
+rootPath: ".\\contracts"
+pathToYulIgnore: ".\\.yulignore"
+inputFileExtension: "yul"
+outputFileExtension: "yaml"
+savePath: ".\\artifacts\\yul-objects"
