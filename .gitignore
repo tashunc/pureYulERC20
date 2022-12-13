@@ -10,3 +10,5 @@ typechain-types
 cache
 artifacts
 
+/test/compiler-tests/integrationTests/mock-compiled-code/
+/test/compiler-tests/e2e-testing/mock-compiled-code/
