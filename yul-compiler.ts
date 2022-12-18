@@ -1,3 +1,5 @@
+
+
 const path = require('path');
 const fs = require('fs');
 const YAML = require('yaml');
@@ -31,14 +33,14 @@ export function loadYulIgnore(path: string) {
  * Given a location to start, search all the files matching the filer and return the name and the relative path
  *
  **/
-export function getAllYulFiles(startPath: string, filter: string, COMPILER_CONFIG: any, YUL_IGNORE_FILES: any): any {
+export function searchFileByFilter(startPath: string, filter: string, COMPILER_CONFIG: any, YUL_IGNORE_FILES: any): any {
     const found = [];
     const files = fs.readdirSync(startPath);
     for (let i = 0; i < files.length; i++) {
         const filename = path.join(startPath, files[i]);
         const stat = fs.lstatSync(filename);
         if (stat.isDirectory() && (!YUL_IGNORE_FILES || YUL_IGNORE_FILES && !YUL_IGNORE_FILES?.includes(filename))) {
-            found.push(...getAllYulFiles(filename, filter, COMPILER_CONFIG, YUL_IGNORE_FILES));
+            found.push(...searchFileByFilter(filename, filter, COMPILER_CONFIG, YUL_IGNORE_FILES));
         } else if (filename.endsWith(filter)) {
             if (files[i].split(".")[0]) {
                 found.push([files[i].split(".")[0], filename]);
@@ -53,7 +55,7 @@ export function getAllYulFiles(startPath: string, filter: string, COMPILER_CONFI
  * return the file metadata which will be helpful for yul compilation
  * */
 export function findAFile(startPath: string, name: string, extension: string, COMPILER_CONFIG: any, YUL_IGNORE_FILES: any) {
-    return getAllYulFiles(startPath, name + "." + extension, COMPILER_CONFIG, YUL_IGNORE_FILES)
+    return searchFileByFilter(startPath, name + "." + extension, COMPILER_CONFIG, YUL_IGNORE_FILES)
 
 }
 
@@ -65,27 +67,32 @@ export function findAFile(startPath: string, name: string, extension: string, CO
  * arg2 - name of the file (convention used here)
  *
  * */
-export function compileASingleFileToBinaryCode(name: string, path: string, savePath: string) {
-    // console.log('cmd /c C:\\addToPath\\yul_pure_compile.bat ' + path + ' ' + name + ' ' + savePath + '\\' + name);
-    require('child_process').exec('cmd /c C:\\addToPath\\yul_pure_compile.bat ' + path + ' ' + name + ' ' + savePath + '\\' + name,
-        (error: any) => {
+export function compileASingleFileToBinaryCode(name: string, extension : string ,path: string, savePath: string) {
+    // console.warn('cmd /c C:\\addToPath\\yul_pure_compile.bat ' + path + ' ' + name + ' ' + savePath + '\\' + name);
+    return new Promise((resolve) => {
+        require('child_process').exec('cmd /c C:\\addToPath\\yul_pure_compile.bat ' + path + ' ' + name + ' ' + savePath + '\\' + name + ' ' + extension,
+            (err: any) => {
+                if (err) {
+                    console.error(err.toString())
+                    return;
+                }
+                resolve(true)
+            });
+    })
 
-            if (error !== null) {
-                console.log(`exec error: ${error}`);
-            }
-        });
 }
 
 
 /**
  * Given the root compile all the .yul files
  * */
-export function compileAll(startPath: any, extension: any, COMPILER_CONFIG: any, YUL_IGNORE_FILES: any) {
-    const outputFiles = getAllYulFiles(startPath, extension, COMPILER_CONFIG, YUL_IGNORE_FILES);
-    // console.log(outputFiles)
+export async function compileAll(startPath: string, inputFileExtension: string, outputFileExtension: string, COMPILER_CONFIG: any, YUL_IGNORE_FILES: any) {
+    const outputFiles = searchFileByFilter(startPath, inputFileExtension, COMPILER_CONFIG, YUL_IGNORE_FILES);
+    console.log(`Compiled ${outputFiles.length} Yul ` + ((outputFiles.length > 1) ? "files" : "file") + " successfully")
 
     for (let i = 0; i < outputFiles.length; i++) {
-        compileASingleFileToBinaryCode(outputFiles[i][0], outputFiles[i][1], COMPILER_CONFIG?.savePath);
+        // console.log(COMPILER_CONFIG?.savePath + '\\' + outputFiles[i][0] + '\\' + outputFiles[i][0] + '.'+ outputFileExtension)
+        await compileASingleFileToBinaryCode(outputFiles[i][0], outputFileExtension, outputFiles[i][1], COMPILER_CONFIG?.savePath);
     }
 }
 
@@ -94,14 +101,17 @@ export function compileAll(startPath: any, extension: any, COMPILER_CONFIG: any,
  * given a file name and an extension a file is compiled
  *
  * */
-export function compileSelected(startPath: string, filename: string, extension: string, COMPILER_CONFIG: any, YUL_IGNORE_FILES: any) {
-    const outputFile = findAFile(startPath, filename, extension, COMPILER_CONFIG, YUL_IGNORE_FILES)
-     // console.log(outputFile)
+export async function compileSelected(startPath: string, filename: string, inputFileExtension: string, outputFileExtension: string, COMPILER_CONFIG: any, YUL_IGNORE_FILES: any) {
+    const outputFile = findAFile(startPath, filename, inputFileExtension, COMPILER_CONFIG, YUL_IGNORE_FILES)
+    // console.log(outputFile)
     if (outputFile.length > 0) {
-        compileASingleFileToBinaryCode(outputFile[0][0], outputFile[0][1], COMPILER_CONFIG?.savePath);
+        await compileASingleFileToBinaryCode(outputFile[0][0], outputFileExtension, outputFile[0][1], COMPILER_CONFIG?.savePath);
     }
 }
 
+/**
+ * Read filtered bytecode
+ * */
 export function getFilteredByteCode(filePath: any) {
     const readByteCode = fs.readFileSync(filePath, 'utf-8')
     const lowerBound = readByteCode.indexOf(':',
@@ -114,9 +124,6 @@ export function getFilteredByteCode(filePath: any) {
 
 }
 
-export function delay(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 // let COMPILER_CONFIG = readYamlConfig();
 // let YUL_IGNORE_FILES =loadYulIgnore();
